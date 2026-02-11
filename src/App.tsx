@@ -15,7 +15,9 @@ export function App() {
   const editorRef = useRef<any>(null);
 
   const [isReady, setIsReady] = useState(false);
-  const [editorInput, setEditorInput] = useState<string>(startingText);
+  const [editorInput, setEditorInput] = useState<string>(
+    localStorage.getItem("v1/main.typ") || startingText,
+  );
   const [file, setFile] = useState<Record<string, Uint8Array>>({});
   const [output, setOutput] = useState<Uint8Array | undefined>();
 
@@ -86,6 +88,17 @@ export function App() {
 
       compilerRef.current = compiler;
       rendererRef.current = renderer;
+
+      const savedFiles = localStorage.getItem("v1/files");
+      if (savedFiles) {
+        const parsed = JSON.parse(savedFiles);
+        const hydrated: Record<string, Uint8Array> = {};
+        for (const [name, base64] of Object.entries(parsed)) {
+          hydrated[name] = base64ToUint8Array(base64 as string);
+        }
+        setFile(hydrated);
+      }
+
       setIsReady(true);
     };
     init();
@@ -100,6 +113,13 @@ export function App() {
         !isReady
       )
         return;
+
+      localStorage.setItem("v1/main.typ", editorInput);
+      const toSave: Record<string, string> = {};
+      for (const [name, data] of Object.entries(file)) {
+        toSave[name] = uint8ArrayToBase64(data);
+      }
+      localStorage.setItem("v1/files", JSON.stringify(toSave));
 
       const compiler = compilerRef.current;
       const renderer = rendererRef.current;
@@ -174,3 +194,8 @@ const startingText = `
 
 #rect(fill: pat, width: 100%, height: 60pt, stroke: 1pt)
 `;
+
+const uint8ArrayToBase64 = (arr: Uint8Array) =>
+  btoa(String.fromCharCode(...arr));
+const base64ToUint8Array = (str: string) =>
+  Uint8Array.from(atob(str), (c) => c.charCodeAt(0));
