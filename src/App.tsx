@@ -1,6 +1,5 @@
-import Editor from "@monaco-editor/react";
+import Editor, { type OnMount } from "@monaco-editor/react";
 import { useEffect, useRef, useState } from "react";
-import { $typst } from "@myriaddreamin/typst.ts/dist/esm/contrib/snippet.mjs";
 import {
   createTypstCompiler,
   createTypstRenderer,
@@ -13,28 +12,55 @@ export function App() {
   const compilerRef = useRef<TypstCompiler | null>(null);
   const rendererRef = useRef<TypstRenderer | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<any>(null);
 
   const [isReady, setIsReady] = useState(false);
-
   const [editorInput, setEditorInput] = useState<string>(startingText);
-  const [images, setImages] = useState<Record<string, Uint8Array>>({});
+  const [file, setFile] = useState<Record<string, Uint8Array>>({});
   const [output, setOutput] = useState<Uint8Array | undefined>();
 
   const isRenderingRef = useRef(false);
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files?.[0]) return;
-
-    const file = e.target.files[0];
-    const buffer = await file.arrayBuffer();
-    const data = new Uint8Array(buffer);
-
-    setImages((prev) => ({ ...prev, [file.name]: data }));
-
-    console.log(`uploaded ${file.name}`);
+  const handleEditorMount: OnMount = (editor) => {
+    editorRef.current = editor;
   };
 
-  // Initialize
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    if (e.clipboardData.files.length === 0) return;
+
+    const imageFile = e.clipboardData.files[0];
+
+    if (imageFile) {
+      e.preventDefault(); // stop
+
+      const buffer = await imageFile.arrayBuffer();
+      const data = new Uint8Array(buffer);
+
+      const filename = imageFile.name.normalize();
+
+      setFile((prev) => ({ ...prev, [filename]: data }));
+
+      const editor = editorRef.current;
+      if (editor) {
+        const position = editor.getPosition();
+        const selection = editor.getSelection();
+
+        editor.executeEdits("paste-image", [
+          {
+            range: {
+              startLineNumber: selection.startLineNumber,
+              startColumn: selection.startColumn,
+              endLineNumber: selection.endLineNumber,
+              endColumn: selection.endColumn,
+            },
+            text: `#image("${filename}")`,
+            forceMoveMarkers: true,
+          },
+        ]);
+      }
+    }
+  };
+
   useEffect(() => {
     const init = async () => {
       const fontBuilder = createTypstFontBuilder();
@@ -65,7 +91,6 @@ export function App() {
     init();
   }, []);
 
-  // Compiler
   useEffect(() => {
     const run = async () => {
       if (
@@ -78,28 +103,21 @@ export function App() {
 
       const compiler = compilerRef.current;
       const renderer = rendererRef.current;
-
       isRenderingRef.current = true;
 
       try {
-        for (const [filename, data] of Object.entries(images)) {
+        for (const [filename, data] of Object.entries(file)) {
           compiler.mapShadow(`/${filename}`, data);
         }
 
-        // TODO: support multiple files
         compiler.addSource("/main.typ", editorInput);
 
-        const artifact = await compiler.compile({
-          mainFilePath: "/main.typ",
-        });
-
-        // ToCanvas works
+        const artifact = await compiler.compile({ mainFilePath: "/main.typ" });
         await renderer.renderToSvg({
           container: containerRef.current!,
           artifactContent: artifact.result!,
           format: "vector",
         });
-
         setOutput(artifact.result);
       } catch (e) {
         console.error(e);
@@ -112,28 +130,26 @@ export function App() {
 
     const timer = setTimeout(run, 300);
     return () => clearTimeout(timer);
-  }, [editorInput, images, isReady]);
+  }, [editorInput, file, isReady]);
 
   return (
     <>
       <div style={{ display: "flex", height: "100vh" }}>
-        <Editor
-          height="100%"
-          width="50%"
-          theme="vs-dark"
-          defaultLanguage="markdown"
-          value={editorInput}
-          onChange={(val) => setEditorInput(val || "")}
-        />
-        {/*<div
-          style={{
-            width: "50%",
-            padding: "20px",
-            overflow: "auto",
-          }}
+        <div
+          style={{ width: "50%", height: "100%" }}
+          onPasteCapture={handlePaste}
         >
-          {output && <TypstDocument fill="#ffffff" artifact={output} />}
-        </div>*/}
+          <Editor
+            height="100%"
+            width="100%"
+            theme="vs-dark"
+            defaultLanguage="markdown"
+            onMount={handleEditorMount}
+            value={editorInput}
+            onChange={(val) => setEditorInput(val || "")}
+          />
+        </div>
+
         <div
           ref={containerRef}
           style={{
@@ -157,4 +173,4 @@ const startingText = `
 ]
 
 #rect(fill: pat, width: 100%, height: 60pt, stroke: 1pt)
-  `;
+`;
