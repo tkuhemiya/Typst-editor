@@ -15,9 +15,13 @@
     "@myriaddreamin/typst.react": "^0.7.0-rc2",
     "@myriaddreamin/typst.ts": "^0.7.0-rc2",
     "bun-plugin-tailwind": "^0.1.2",
+    "idb-keyval": "^6.2.2",
     "react": "^19",
     "react-dom": "^19",
-    "tailwindcss": "^4.1.11"
+    "tailwindcss": "^4.1.11",
+    "y-monaco": "^0.1.6",
+    "y-webrtc": "^10.3.0",
+    "yjs": "^13.6.29"
   },
   "devDependencies": {
     "@types/react": "^19",
