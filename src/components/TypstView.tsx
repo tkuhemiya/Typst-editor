@@ -1,14 +1,12 @@
 import { useEffect, useRef, type RefObject } from "react";
 import { useTypst } from "@/hooks/use-typst";
-import * as Y from "yjs";
-import { file } from "bun";
+import { getSavedFiles } from "@/utils";
 
 interface TypstViewProps {
   content: string;
-  yDoc: RefObject<Y.Doc>;
 }
 
-const TypstView = ({ content, yDoc }: TypstViewProps) => {
+const TypstView = ({ content }: TypstViewProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const isCompiling = useRef(false);
   const { compilerRef, rendererRef } = useTypst(containerRef);
@@ -24,9 +22,13 @@ const TypstView = ({ content, yDoc }: TypstViewProps) => {
       const renderer = rendererRef.current;
 
       try {
-        const files = yDoc.current.getMap<Uint8Array>("files");
-        files.forEach((data, filename) => {
-          compiler.mapShadow(`/${filename}`, data);
+        // const files = yDoc.current.getMap<Uint8Array>("files");
+        // files.forEach((data, filename) => {
+        //   compiler.mapShadow(`/${filename}`, data);
+        // });
+        const files = await getSavedFiles();
+        Object.entries(files).forEach(([filename, data]) => {
+          compiler.mapShadow(`/${filename}`, data as Uint8Array);
         });
         compiler.addSource("/main.typ", content);
 
