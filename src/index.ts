@@ -10,7 +10,7 @@ const rooms = new Map<string, Set<ServerWebSocket<ServerData>>>();
 const server = Bun.serve<ServerData>({
   routes: {
     "/typst_ts_web_compiler_bg.wasm": Bun.file(
-      "public/typst_ts_web_compiler_bg.wasm",
+      "public/typst_ts_web_compiler_bg.wasm"
     ),
     "/typst_ts_renderer_bg.wasm": Bun.file("public/typst_ts_renderer_bg.wasm"),
     "/Geist-Regular.ttf": Bun.file("public/Geist-Regular.ttf"),

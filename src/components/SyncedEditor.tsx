@@ -6,29 +6,38 @@ import {
   type Dispatch,
   type SetStateAction,
 } from "react";
-import { getSavedFiles, handleSave } from "../utils";
+import {
+  getImagesFiles,
+  getTypstFile,
+  setImageFile,
+  setTypstFile,
+} from "../utils";
 import * as Y from "yjs";
 import { WebrtcProvider } from "y-webrtc";
 import { MonacoBinding } from "y-monaco";
 
 interface SyncedEditorProps {
   roomId: string;
+  currentFile: string;
   setContent: Dispatch<SetStateAction<string>>;
   setUserCount: Dispatch<SetStateAction<number>>;
 }
 
 const SyncedEditor = ({
   roomId,
+  currentFile,
   setContent,
   setUserCount,
 }: SyncedEditorProps) => {
   const editorRef = useRef<any>(null);
   const yDocRef = useRef<Y.Doc>(new Y.Doc());
   const providerRef = useRef<WebrtcProvider | null>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!roomId) return;
     const init = async () => {
+      // setup provider
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const signalingUrl = `${protocol}//${window.location.host}/ws?room=${roomId}`;
       console.log(signalingUrl);
@@ -37,17 +46,29 @@ const SyncedEditor = ({
       });
       providerRef.current = provider;
 
-      provider.on("synced", () => {
+      provider.on("synced", async () => {
         const yText = yDocRef.current.getText("monaco");
+        const yFiles = yDocRef.current.getMap<Uint8Array>("images");
+
         if (yText.length === 0) {
-          console.log("no file");
-          const localContent = localStorage.getItem("v1/main.typ") || "";
+          const localContent = await getTypstFile(currentFile);
           if (localContent) {
             yDocRef.current.transact(() => {
               yText.insert(0, localContent);
             });
           }
         }
+
+        if (yFiles.size > 0) {
+          const currentLocalImages = await getImagesFiles();
+          yFiles.forEach((data, filename) => {
+            // Only write to disk if it's missing or different to save IO
+            if (!currentLocalImages[filename]) {
+              setImageFile(filename, data);
+            }
+          });
+        }
+
         setContent(yText.toString());
       });
 
@@ -57,23 +78,18 @@ const SyncedEditor = ({
       provider.awareness.on("change", updateCount);
 
       // Handle file map sync
-      const yFiles = yDocRef.current.getMap<Uint8Array>("files");
+      const yFiles = yDocRef.current.getMap<Uint8Array>("images");
       yFiles.observe(async (event) => {
         const updates: Record<string, Uint8Array> = {};
         event.keys.forEach((change, key) => {
           if (change.action === "add" || change.action === "update") {
             const data = yFiles.get(key);
-            if (data) updates[key] = data;
+            if (data) {
+              console.log("setting image:", key);
+              setImageFile(key, data);
+            }
           }
         });
-
-        try {
-          const savedFiles = await getSavedFiles();
-          Object.assign(savedFiles, updates);
-          savedFiles.forEach((data, filename) => handleSave(filename, data));
-        } catch (err) {
-          console.error("Sync error:", err);
-        }
       });
     };
 
@@ -94,14 +110,18 @@ const SyncedEditor = ({
       yText,
       editor.getModel()!,
       new Set([editor]),
-      providerRef.current?.awareness,
+      providerRef.current?.awareness
     );
 
     // Sync editor changes
     yText.observe(() => {
       const updated = yText.toString();
       setContent(updated);
-      localStorage.setItem("v1/main.typ", updated);
+
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        setTypstFile(currentFile, updated);
+      }, 300);
     });
   };
 
@@ -114,8 +134,8 @@ const SyncedEditor = ({
       const data = new Uint8Array(await imageFile.arrayBuffer());
       const filename = imageFile.name.normalize();
 
-      yDocRef.current.getMap<Uint8Array>("files").set(filename, data);
-      handleSave(filename, data);
+      yDocRef.current.getMap<Uint8Array>("images").set(filename, data);
+      setImageFile(filename, data);
 
       const selection = editorRef.current.getSelection();
       editorRef.current.executeEdits("paste-image", [

@@ -1,25 +1,39 @@
-import { file } from "bun";
 import { get, set } from "idb-keyval";
 
-export const handleSave = async (filename: string, data: Uint8Array) => {
-  const files = (await get("v1/files")) || {};
+export const setImageFile = async (filename: string, data: Uint8Array) => {
+  const files = (await get<Record<string, Uint8Array>>("images")) || {};
   files[filename] = data;
-  await set("v1/files", files);
-  console.log("saved file", filename, data);
-  return filename;
+  await set("images", files);
+
+  const names = (await get<string[]>("names/images")) || [];
+  if (!names.includes(filename)) {
+    await set("names/images", [...names, filename]);
+  }
 };
 
-export const getSavedFiles = async (): Promise<Map<string, Uint8Array>> => {
-  const files = await get("v1/files");
-  console.log("getting files", files);
-  return files;
+export const getImagesFiles = async (): Promise<Record<string, Uint8Array>> => {
+  return (await get("images")) || {};
 };
 
-export const startingText = `
-#let pat = tiling(size: (30pt, 30pt))[
-  #place(line(start: (0%, 0%), end: (100%, 100%)))
-  #place(line(start: (0%, 100%), end: (100%, 0%)))
-]
+export const getImagesNames = async (): Promise<string[]> => {
+  return (await get("names/images")) || [];
+};
 
-#rect(fill: pat, width: 100%, height: 60pt, stroke: 1pt)
-`;
+export const setTypstFile = async (filename: string, data: string) => {
+  await set(`typst/${filename}.typ`, data);
+
+  const names = (await get<string[]>("names/typst")) || [];
+  if (!names.includes(filename)) {
+    await set("names/typst", [...names, filename]);
+  }
+};
+
+export const getTypstFile = async (
+  filename: string
+): Promise<string | undefined> => {
+  return await get(`typst/${filename}.typ`);
+};
+
+export const getTypstNames = async (): Promise<string[]> => {
+  return (await get("names/typst")) || [];
+};

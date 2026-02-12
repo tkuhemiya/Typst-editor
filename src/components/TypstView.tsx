@@ -1,6 +1,6 @@
 import { useEffect, useRef, type RefObject } from "react";
 import { useTypst } from "@/hooks/use-typst";
-import { getSavedFiles } from "@/utils";
+import { getImagesFiles } from "@/utils";
 
 interface TypstViewProps {
   content: string;
@@ -26,10 +26,12 @@ const TypstView = ({ content }: TypstViewProps) => {
         // files.forEach((data, filename) => {
         //   compiler.mapShadow(`/${filename}`, data);
         // });
-        const files = await getSavedFiles();
-        Object.entries(files).forEach(([filename, data]) => {
-          compiler.mapShadow(`/${filename}`, data as Uint8Array);
-        });
+        const files = await getImagesFiles();
+        if (files) {
+          Object.entries(files).forEach(([filename, data]) => {
+            compiler.mapShadow(`/${filename}`, data as Uint8Array);
+          });
+        }
         compiler.addSource("/main.typ", content);
 
         const artifact = await compiler.compile({
@@ -57,10 +59,7 @@ const TypstView = ({ content }: TypstViewProps) => {
   }, [content]);
 
   return (
-    <div
-      ref={containerRef}
-      className="w-1/2 h-full p-0 overflow-auto"
-    ></div>
+    <div ref={containerRef} className="w-1/2 h-full p-0 overflow-auto"></div>
   );
 };
 
