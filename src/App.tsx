@@ -18,8 +18,8 @@ export function App() {
   }, []);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+    <div className="flex flex-col h-screen m-0">
+      <div className="flex flex-1 overflow-hidden">
         {roomId ? (
           <SyncedEditor
             roomId={roomId}

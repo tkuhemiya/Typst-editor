@@ -59,12 +59,7 @@ const TypstView = ({ content }: TypstViewProps) => {
   return (
     <div
       ref={containerRef}
-      style={{
-        width: "50%",
-        height: "100%",
-        padding: "0px",
-        overflow: "auto",
-      }}
+      className="w-1/2 h-full p-0 overflow-auto"
     ></div>
   );
 };

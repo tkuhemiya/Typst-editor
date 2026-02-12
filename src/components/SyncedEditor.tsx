@@ -129,7 +129,7 @@ const SyncedEditor = ({
   };
 
   return (
-    <div style={{ width: "50%", height: "100%" }} onPasteCapture={handlePaste}>
+    <div className="w-1/2 h-full" onPasteCapture={handlePaste}>
       <Editor
         height="100%"
         theme="vs-dark"
