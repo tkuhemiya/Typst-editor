@@ -11,7 +11,7 @@ import {
   getTypstFile,
   setImageFile,
   setTypstFile,
-} from "../utils";
+} from "../store";
 import * as Y from "yjs";
 import { WebrtcProvider } from "y-webrtc";
 import { MonacoBinding } from "y-monaco";

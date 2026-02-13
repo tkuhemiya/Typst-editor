@@ -1,12 +1,12 @@
 import { useEffect, useRef, type RefObject } from "react";
 import { useTypst } from "@/hooks/use-typst";
-import { getImagesFiles } from "@/utils";
+import { getImagesFiles } from "@/store";
 
 interface TypstViewProps {
-  content: string;
+  buffer: string;
 }
 
-const TypstView = ({ content }: TypstViewProps) => {
+const TypstView = ({ buffer }: TypstViewProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const isCompiling = useRef(false);
   const { compilerRef, rendererRef } = useTypst(containerRef);
@@ -32,7 +32,7 @@ const TypstView = ({ content }: TypstViewProps) => {
             compiler.mapShadow(`/${filename}`, data as Uint8Array);
           });
         }
-        compiler.addSource("/main.typ", content);
+        compiler.addSource("/main.typ", buffer);
 
         const artifact = await compiler.compile({
           mainFilePath: "/main.typ",
@@ -54,9 +54,11 @@ const TypstView = ({ content }: TypstViewProps) => {
       }
     };
 
-    const timer = setTimeout(run, 300);
-    return () => clearTimeout(timer);
-  }, [content]);
+    run();
+    // TODO: handle debounce on editor level
+    // const timer = setTimeout(run, 50);
+    // return () => clearTimeout(timer);
+  }, [buffer]);
 
   return (
     <div ref={containerRef} className="w-1/2 h-full p-0 overflow-auto"></div>

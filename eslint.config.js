@@ -1,10 +1,12 @@
 import js from "@eslint/js";
+import tailwindcss from "eslint-plugin-tailwindcss";
 import tseslint from "typescript-eslint";
 import prettier from "eslint-config-prettier";
 
 export default [
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  ...tailwindcss.configs["flat/recommended"],
   prettier,
   {
     files: ["**/*.{ts,tsx,js,jsx}"],
@@ -19,6 +21,12 @@ export default [
       },
       globals: {
         React: "readonly",
+      },
+    },
+    settings: {
+      tailwindcss: {
+        callees: ["classnames", "clsx", "ctl", "cn", "cva", "tw"],
+        config: "./tailwind.config.ts",
       },
     },
   },
